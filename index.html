@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>세포소기관 탐험: 우주 슈팅 학습 게임</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Inter & Noto Sans KR) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0b0f19;
+            color: #e2e8f0;
+            user-select: none;
+        }
+        /* Glassmorphic UI Containers */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
+        .glow-title {
+            text-shadow: 0 0 12px rgba(56, 189, 248, 0.6), 0 0 24px rgba(56, 189, 248, 0.4);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b82f6;
+        }
+        canvas {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- Header Navigation -->
+    <header class="border-b border-slate-800 bg-slate-950/80 sticky top-0 z-50 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+                    <i class="fa-solid font-bold text-xl text-white fa-atom"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight text-white glow-title">BioSpace: 세포소기관 슈터</h1>
+                    <p class="text-xs text-cyan-400 font-medium">고등학교 생명과학 I · II 핵심 개념 학습</p>
+                </div>
+            </div>
+
+            <!-- Tab Navigation Buttons -->
+            <nav class="flex bg-slate-900/90 p-1.5 rounded-xl border border-slate-800 text-sm font-semibold">
+                <button onclick="switchTab('game')" id="tab-btn-game" class="px-4 py-2 rounded-lg text-white bg-blue-600 shadow-md transition-all duration-200 flex items-center gap-2">
+                    <i class="fa-solid fa-gamepad"></i> <span>게임 플레이</span>
+                </button>
+                <button onclick="switchTab('guide')" id="tab-btn-guide" class="px-4 py-2 rounded-lg text-slate-400 hover:text-white transition-all duration-200 flex items-center gap-2">
+                    <i class="fa-solid fa-book-bookmark"></i> <span>학습 가이드 & 유기적 협력</span>
+                </button>
+                <button onclick="switchTab('ai')" id="tab-btn-ai" class="px-4 py-2 rounded-lg text-slate-400 hover:text-white transition-all duration-200 flex items-center gap-2">
+                    <i class="fa-solid fa-robot"></i> <span>AI 활용 & 성찰 보고서</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl w-full mx-auto p-4 flex-grow flex flex-col justify-center">
+
+        <!-- TAB 1: GAME PLAY SCREEN -->
+        <section id="tab-game" class="block space-y-4">
+            
+            <!-- Quiz Status Banner -->
+            <div class="glass-panel p-4 rounded-2xl border-l-4 border-l-cyan-400 relative overflow-hidden">
+                <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+                    <div class="flex items-center gap-2">
+                        <span id="quiz-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                            Q1 / 8
+                        </span>
+                        <span id="quiz-category" class="text-xs font-semibold text-slate-400">
+                            [에너지 전환 소기관]
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-6 text-sm font-bold">
+                        <div class="text-emerald-400"><i class="fa-solid fa-star text-yellow-400 mr-1"></i>점수: <span id="score-display">0</span></div>
+                        <div class="text-purple-400"><i class="fa-solid fa-fire mr-1"></i>콤보: <span id="combo-display">0</span>x</div>
+                        <div class="text-rose-400"><i class="fa-solid fa-heart mr-1"></i>체력: <span id="hp-display">❤️❤️❤️</span></div>
+                    </div>
+                </div>
+                <!-- Question Text -->
+                <h2 id="question-text" class="text-lg md:text-xl font-bold text-white leading-relaxed">
+                    문제를 불러오는 중입니다...
+                </h2>
+            </div>
+
+            <!-- Canvas Container -->
+            <div class="relative w-full aspect-[16/9] max-h-[620px] bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl flex items-center justify-center">
+                <canvas id="gameCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+
+                <!-- Overlay Game Start Screen -->
+                <div id="start-screen" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20">
+                    <div class="w-20 h-20 mb-4 rounded-3xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-4xl shadow-2xl shadow-cyan-500/20">
+                        <i class="fa-solid fa-shuttle-space"></i>
+                    </div>
+                    <h2 class="text-3xl font-black text-white mb-2 tracking-wide">세포소기관 우주 슈터</h2>
+                    <p class="text-slate-300 max-w-lg mb-6 text-sm leading-relaxed">
+                        상단에 제시되는 세포소기관 관련 문항을 읽고, 우주선(플레이어)을 조종하여 **정답에 해당하는 세포소기관 운석**을 조준 사격하세요!
+                    </p>
+                    <div class="grid grid-cols-2 gap-4 max-w-md w-full mb-6 text-xs text-slate-400 bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                        <div class="text-left">
+                            <p class="font-bold text-cyan-300 mb-1"><i class="fa-solid fa-keyboard mr-1"></i> 키보드 조작</p>
+                            <p>좌/우 이동: 방향키 ← → 또는 A / D</p>
+                            <p>레이저 발사: Spacebar</p>
+                        </div>
+                        <div class="text-left">
+                            <p class="font-bold text-cyan-300 mb-1"><i class="fa-solid fa-hand-pointer mr-1"></i> 마우스/터치</p>
+                            <p>좌우 드래그: 이동</p>
+                            <p>터치/클릭: 레이저 자동 발사</p>
+                        </div>
+                    </div>
+                    <button onclick="startGame()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-lg shadow-lg shadow-cyan-500/30 transition-all transform hover:scale-105 active:scale-95">
+                        <i class="fa-solid fa-play mr-2"></i> 탐사 시작하기
+                    </button>
+                </div>
+
+                <!-- Overlay Game Over / Victory Modal -->
+                <div id="game-over-screen" class="hidden absolute inset-0 bg-slate-950/95 backdrop-blur-md flex-col items-center justify-center p-6 text-center z-30 overflow-y-auto">
+                    <div id="result-icon-container" class="w-16 h-16 mb-3 rounded-full flex items-center justify-center text-3xl"></div>
+                    <h2 id="result-title" class="text-2xl font-black text-white mb-1">탐사 완료!</h2>
+                    <p id="result-subtitle" class="text-sm text-slate-400 mb-4">최종 학습 점수와 피드백을 확인하세요.</p>
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 max-w-lg w-full mb-4 text-left space-y-2">
+                        <div class="flex justify-between border-b border-slate-800 pb-2 text-sm">
+                            <span class="text-slate-400">최종 점수:</span>
+                            <span id="final-score" class="font-bold text-cyan-400">0점</span>
+                        </div>
+                        <div class="flex justify-between border-b border-slate-800 pb-2 text-sm">
+                            <span class="text-slate-400">최대 연속 콤보:</span>
+                            <span id="final-combo" class="font-bold text-purple-400">0x</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-400">학습 달성도:</span>
+                            <span id="final-accuracy" class="font-bold text-emerald-400">100%</span>
+                        </div>
+                    </div>
+
+                    <div id="quiz-summary-list" class="max-w-lg w-full max-h-48 overflow-y-auto space-y-2 mb-4 pr-1 text-xs text-left">
+                        <!-- Summary Items inserted via JS -->
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button onclick="startGame()" class="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all">
+                            <i class="fa-solid fa-rotate-right mr-1"></i> 다시 도전
+                        </button>
+                        <button onclick="switchTab('guide')" class="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm transition-all border border-slate-700">
+                            <i class="fa-solid fa-book-open mr-1"></i> 개념 재학습
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Controls Bar (On-screen touch support) -->
+            <div class="md:hidden grid grid-cols-3 gap-2">
+                <button id="btn-left" class="bg-slate-800/90 border border-slate-700 active:bg-cyan-600 py-3 rounded-xl text-white font-bold text-xl flex items-center justify-center">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <button id="btn-fire" class="bg-gradient-to-r from-rose-600 to-red-500 active:scale-95 py-3 rounded-xl text-white font-bold text-base flex items-center justify-center shadow-lg shadow-rose-600/30">
+                    <i class="fa-solid fa-crosshairs mr-1"></i> 발사
+                </button>
+                <button id="btn-right" class="bg-slate-800/90 border border-slate-700 active:bg-cyan-600 py-3 rounded-xl text-white font-bold text-xl flex items-center justify-center">
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- TAB 2: LEARNING GUIDE & ORGANELLE COOPERATION -->
+        <section id="tab-guide" class="hidden space-y-6">
+            <!-- Learning Objectives & Rationale -->
+            <div class="glass-panel p-6 rounded-2xl space-y-4 border border-cyan-500/20">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-cyan-500/20 text-cyan-400 rounded-xl text-xl">
+                        <i class="fa-solid fa-bullseye"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">학습 목표 및 게임 기획 의도</h2>
+                        <p class="text-xs text-slate-400">세포소기관의 구조·기능 완벽 이해 및 유기적 관련성 파악</p>
+                    </div>
+                </div>
+                <div class="grid md:grid-cols-3 gap-4 text-sm text-slate-300 pt-2">
+                    <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                        <h3 class="font-bold text-cyan-300 mb-1"><i class="fa-solid fa-graduation-cap mr-1"></i> 학습 목표</h3>
+                        <p class="text-xs leading-relaxed text-slate-300">
+                            마이토콘드리아, 엽록체 등 8종 이상의 세포소기관 구조와 기능을 이해하고, 세포소기관들이 세포 생명 활동에서 어떻게 유기적으로 협력하는지 설명할 수 있다.
+                        </p>
+                    </div>
+                    <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                        <h3 class="font-bold text-blue-300 mb-1"><i class="fa-solid fa-headset mr-1"></i> 게임 유형 선정 이유</h3>
+                        <p class="text-xs leading-relaxed text-slate-300">
+                            '우주 슈팅' 장르는 몰입감과 즉각적인 시각 피드백을 제공합니다. 제시된 구조적·기능적 특징에 맞는 타깃을 정밀 사격하는 과정을 통해 직관적인 개념 연상 및 장기 기억 형성을 돕습니다.
+                        </p>
+                    </div>
+                    <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                        <h3 class="font-bold text-emerald-300 mb-1"><i class="fa-solid fa-gamepad mr-1"></i> 게임 규칙 및 피드백</h3>
+                        <p class="text-xs leading-relaxed text-slate-300">
+                            정답 운석을 격파 시 점수와 콤보가 증가하며 즉시 피드백이 제공됩니다. 오답 운석 사격 시 체력이 감점되며 해당 문항의 핵심 개념 힌트 오답 피드백이 전송됩니다.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ORGANELLE COOPERATION PIPELINES -->
+            <div class="glass-panel p-6 rounded-2xl space-y-6">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-emerald-500/20 text-emerald-400 rounded-xl text-xl">
+                        <i class="fa-solid fa-diagram-project"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">세포소기관 간 유기적 협력 관계</h2>
+                        <p class="text-xs text-slate-400">독립된 세포소기관들이 하나의 세포 기능을 수행하기 위해 유기적으로 작용하는 대표 경로</p>
+                    </div>
+                </div>
+
+                <!-- Pipeline 1: Protein Synthesis & Secretion -->
+                <div class="bg-slate-900/90 rounded-xl p-5 border border-slate-800 space-y-3">
+                    <h3 class="font-bold text-amber-300 flex items-center gap-2">
+                        <i class="fa-solid fa-dna text-amber-400"></i> 1. 단백질 합성 및 세포 외 분비 시스템 (Protein Secretion Pipeline)
+                    </h3>
+                    <div class="grid md:grid-cols-5 gap-2 text-center text-xs">
+                        <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700 flex flex-col justify-center">
+                            <span class="font-bold text-cyan-300 text-sm">① 핵 (Nucleus)</span>
+                            <span class="text-slate-400 mt-1">DNA 유전정보 전사 → mRNA 생성 및 핵공 전출</span>
+                        </div>
+                        <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700 flex flex-col justify-center">
+                            <span class="font-bold text-cyan-300 text-sm">② 라이보솜 (Ribosome)</span>
+                            <span class="text-slate-400 mt-1">mRNA 번역 → 아미노산 폴리펩타이드(단백질) 합성</span>
+                        </div>
+                        <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700 flex flex-col justify-center">
+                            <span class="font-bold text-cyan-300 text-sm">③ 거친면소포체</span>
+                            <span class="text-slate-400 mt-1">합성된 단백질 삼차구조 변형 및 운반 소낭에 저장</span>
+                        </div>
+                        <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700 flex flex-col justify-center">
+                            <span class="font-bold text-cyan-300 text-sm">④ 골지체 (Golgi)</span>
+                            <span class="text-slate-400 mt-1">소낭 수용, 단백질 최종 가공, 당쇄 첨가 및 분류</span>
+                        </div>
+                        <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700 flex flex-col justify-center">
+                            <span class="font-bold text-cyan-300 text-sm">⑤ 세포막 / 라이소솜</span>
+                            <span class="text-slate-400 mt-1">분비소낭의 외포작용(Exocytosis) 또는 라이소솜 형성</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pipeline 2: Energy & Metabolism Cooperation -->
+                <div class="bg-slate-900/90 rounded-xl p-5 border border-slate-800 space-y-3">
+                    <h3 class="font-bold text-emerald-300 flex items-center gap-2">
+                        <i class="fa-solid fa-leaf text-emerald-400"></i> 2. 에너지 전환 및 능동수송 협력 시스템 (Energy Cooperation)
+                    </h3>
+                    <div class="grid md:grid-cols-3 gap-3 text-xs">
+                        <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
+                            <span class="font-bold text-emerald-300 block text-sm mb-1">엽록체 (Chloroplast)</span>
+                            <p class="text-slate-300">빛에너지를 흡수하여 CO₂와 H₂O로부터 포도당(유기물)과 O₂를 합성 (광합성)</p>
+                        </div>
+                        <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
+                            <span class="font-bold text-rose-300 block text-sm mb-1">마이토콘드리아 (Mitochondria)</span>
+                            <p class="text-slate-300">엽록체가 만든 포도당과 O₂를 세포호흡으로 분해하여 다량의 ATP 화학에너지 생산</p>
+                        </div>
+                        <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
+                            <span class="font-bold text-blue-300 block text-sm mb-1">세포막 및 타 소기관</span>
+                            <p class="text-slate-300">마이토콘드리아의 ATP를 공급받아 능동수송, 소포체/골지체 물질 이동, 물질 합성 수행</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DETAILED STRUCTURE & FUNCTION: MITOCHONDRIA VS CHLOROPLAST -->
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Mitochondria Detailed Card -->
+                <div class="glass-panel p-6 rounded-2xl border-l-4 border-l-rose-500 space-y-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold text-xl">
+                            <i class="fa-solid fa-fire-flame-curved"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white">마이토콘드리아 (Mitochondria)</h3>
+                            <p class="text-xs text-rose-300 font-medium">세포호흡과 ATP 에너지 생산의 중심</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2 text-xs text-slate-300">
+                        <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+                            <span class="font-bold text-rose-300">· 내막 & 크리스타 (Crista):</span>
+                            <p class="mt-1">내막이 안쪽으로 접혀 들어간 크리스타 구조로 표면적을 극대화. 전자전달계 단백질과 ATP 합성효소가 존재하여 **산화적 인산화**를 통해 다량의 ATP 생산.</p>
+                        </div>
+                        <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+                            <span class="font-bold text-rose-300">· 바탕질 (Matrix):</span>
+                            <p class="mt-1">내막 안쪽의 액체 공간. TCA 회로 효소, 자체 DNA, 라이보솜을 포함하여 독자적인 단백질 합성 및 분열 가능.</p>
+                        </div>
+                        <div class="bg-rose-950/40 border border-rose-800/50 p-2.5 rounded-lg text-rose-200 font-mono text-[11px]">
+                            세포호흡 화학식: C₆H₁₂O₆ + 6O₂ + 6H₂O → 6CO₂ + 12H₂O + 32ATP
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chloroplast Detailed Card -->
+                <div class="glass-panel p-6 rounded-2xl border-l-4 border-l-emerald-500 space-y-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xl">
+                            <i class="fa-solid fa-seedling"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white">엽록체 (Chloroplast)</h3>
+                            <p class="text-xs text-emerald-300 font-medium">광합성을 통한 유기물(포도당) 합성</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2 text-xs text-slate-300">
+                        <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+                            <span class="font-bold text-emerald-300">· 타이라코이드 막 (Thylakoid Membrane):</span>
+                            <p class="mt-1">엽록소 등 광합성색소와 광계가 존재. 빛에너지를 흡수하여 물을 분해(O₂ 방출)하고 ATP와 NADPH를 생성하는 **명반응** 진행 (그라나 형성).</p>
+                        </div>
+                        <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+                            <span class="font-bold text-emerald-300">· 스트로마 (Stroma):</span>
+                            <p class="mt-1">타이라코이드 외부의 액체 바탕질. 캘빈 회로 효소들이 CO₂를 고정하여 포도당(유기물)을 합성하는 **암반응(탄소고정)** 진행. 자체 DNA와 라이보솜 보유.</p>
+                        </div>
+                        <div class="bg-emerald-950/40 border border-emerald-800/50 p-2.5 rounded-lg text-emerald-200 font-mono text-[11px]">
+                            광합성 화학식: 6CO₂ + 12H₂O + 빛에너지 → C₆H₁₂O₆ + 6O₂ + 6H₂O
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: AI UTILIZATION & REFLECTION REPORT -->
+        <section id="tab-ai" class="hidden space-y-6">
+            <div class="glass-panel p-6 rounded-2xl space-y-6">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-purple-500/20 text-purple-400 rounded-xl text-xl">
+                        <i class="fa-solid fa-robot"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">AI 활용 기록 및 학습 성찰 보고서</h2>
+                        <p class="text-xs text-slate-400">웹 게임 제작 시 활용한 AI 생성 사례 검토/수정 판단 및 성찰</p>
+                    </div>
+                </div>
+
+                <!-- AI Case 1 -->
+                <div class="bg-slate-900/90 rounded-xl p-5 border border-slate-800 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="px-2.5 py-1 bg-purple-500/20 text-purple-300 text-xs font-bold rounded-md border border-purple-500/30">
+                            AI 활용 사례 1: 세포소기관 퀴즈 문항 및 오답 피드백 데이터 생성
+                        </span>
+                        <span class="text-xs text-slate-500">2026.10.29 기록</span>
+                    </div>
+                    <div class="grid md:grid-cols-3 gap-3 text-xs">
+                        <div class="bg-slate-800/60 p-3 rounded-lg">
+                            <span class="font-bold text-slate-300 block mb-1">1) 활용 목적 및 핵심 요청</span>
+                            <p class="text-slate-400">고등학교 생명과학 수준에 맞춰 마이토콘드리아 내막/바탕질, 엽록체 타이라코이드/스트로마 및 세포소기관 유기적 협력을 다루는 퀴즈 문항 및 정답/오답 해설 데이터 구조화 요청.</p>
+                        </div>
+                        <div class="bg-slate-800/60 p-3 rounded-lg">
+                            <span class="font-bold text-slate-300 block mb-1">2) 생성 결과 검토</span>
+                            <p class="text-slate-400">초기 생성된 문항에서 구 표기 용어(리보솜, 미토콘드리아, 티라코이드)가 표준 표기와 혼용되어 출력되는 현상 확인.</p>
+                        </div>
+                        <div class="bg-slate-800/60 p-3 rounded-lg">
+                            <span class="font-bold text-purple-300 block mb-1">3) 수정 및 유지 판단 (이유)</span>
+                            <p class="text-slate-300">**[수정 판단]** 교과서 최신 용어 기준인 '라이보솜', '마이토콘드리아', '타이라코이드', '바탕질', '크리스타'로 전면 교정함. 명반응은 타이라코이드 막, 암반응(캘빈회로)은 스트로마로 정확히 명시함.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Case 2 -->
+                <div class="bg-slate-900/90 rounded-xl p-5 border border-slate-800 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="px-2.5 py-1 bg-cyan-500/20 text-cyan-300 text-xs font-bold rounded-md border border-cyan-500/30">
+                            AI 활용 사례 2: HTML5 Canvas 우주 슈팅 렌더링 및 충돌 알고리즘
+                        </span>
+                        <span class="text-xs text-slate-500">2026.10.29 기록</span>
+                    </div>
+                    <div class="grid md:grid-cols-3 gap-3 text-xs">
+                        <div class="bg-slate-800/60 p-3 rounded-lg">
+                            <span class="font-bold text-slate-300 block mb-1">1) 활용 목적 및 핵심 요청</span>
+                            <p class="text-slate-400">모바일 및 데스크톱 모드에서 유연하게 작동하는 반응형 캔버스 슈팅 제어 및 레이저-운석 AABB/원형 충돌 감지 알고리즘 코드 생성.</p>
+                        </div>
+                        <div class="bg-slate-800/60 p-3 rounded-lg">
+                            <span class="font-bold text-slate-300 block mb-1">2) 생성 결과 검토</span>
+                            <p class="text-slate-400">화면 크기가 변할 때 운석의 텍스트 레이블 좌표가 어긋나거나 플레이어가 화면 밖으로 이탈하는 문제 발생.</p>
+                        </div>
+                        <div class="bg-slate-800/60 p-3 rounded-lg">
+                            <span class="font-bold text-cyan-300 block mb-1">3) 수정 및 유지 판단 (이유)</span>
+                            <p class="text-slate-300">**[수정 판단]** 캔버스 리사이즈 시 플레이어 x 위치 비율을 유지하도록 개선하고, 운석 텍스트 래핑 함수를 추가하여 가독성을 극대화함.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Self-Reflection Section -->
+                <div class="border-t border-slate-800 pt-5 space-y-4">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-pen-to-square text-amber-400"></i> 수행 활동 성찰 보고서 (Self-Reflection)
+                    </h3>
+                    
+                    <div class="grid md:grid-cols-3 gap-4 text-xs">
+                        <div class="bg-emerald-950/20 border border-emerald-800/40 p-4 rounded-xl space-y-2">
+                            <h4 class="font-bold text-emerald-400 text-sm flex items-center gap-1">
+                                <i class="fa-solid fa-circle-check"></i> 잘된 점 (Strengths)
+                            </h4>
+                            <p class="text-slate-300 leading-relaxed">
+                                단순히 세포소기관 이름만 맞추는 단편적 퀴즈를 넘어, **핵-라이보솜-거친면소포체-골지체-세포막**으로 이어지는 단백질 분비 경로 및 **마이토콘드리아와 엽록체의 세부 내부 구조(크리스타, 바탕질, 타이라코이드, 스트로마)**의 기능 연결을 문제와 학습 가이드에 통합하여 교과 표준 용어 기반의 깊이 있는 생명과학 학습이 가능하도록 기획함.
+                            </p>
+                        </div>
+
+                        <div class="bg-blue-950/20 border border-blue-800/40 p-4 rounded-xl space-y-2">
+                            <h4 class="font-bold text-blue-400 text-sm flex items-center gap-1">
+                                <i class="fa-solid fa-wrench"></i> 개선한 점 (Improvements)
+                            </h4>
+                            <p class="text-slate-300 leading-relaxed">
+                                기존 용어를 교과서 최신 표준 용어(라이보솜, 라이소솜, 마이토콘드리아, 거친면소포체, 타이라코이드, 크리스타, 바탕질 등)로 정밀하게 수정하고, 슈팅 속도가 빠르던 문제점을 개선하여 **잘못된 타깃 사격 시 즉시 감점 피드백과 함께 핵심 용어 힌트 팝업**이 제공되도록 구현함.
+                            </p>
+                        </div>
+
+                        <div class="bg-purple-950/20 border border-purple-800/40 p-4 rounded-xl space-y-2">
+                            <h4 class="font-bold text-purple-400 text-sm flex items-center gap-1">
+                                <i class="fa-solid fa-lightbulb"></i> 추가 개선 아이디어 (Future Ideas)
+                            </h4>
+                            <p class="text-slate-300 leading-relaxed">
+                                향후 3D 그래픽을 도입하여 실제 동식물 세포 내부를 우주선으로 직접 항해하는 **3D 세포 탐험 모드**를 추가하고, 사용자가 직접 틀린 문제 유형만 모아 오답 모의고사를 생성하는 맞춤형 AI 학습 튜터링 기능을 결합하면 학습 효과가 더욱 증대될 것임.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 bg-slate-950 py-4 text-center text-xs text-slate-500">
+        <p>© 2026 BioSpace Cell Organelle Learning Game. Designed for High School Biology Excellence.</p>
+    </footer>
+
+    <!-- Toast Notification / Instant Feedback Modal -->
+    <div id="toast-modal" class="fixed bottom-6 right-6 max-w-md w-full glass-panel p-4 rounded-xl border border-cyan-500/40 shadow-2xl transition-all duration-300 transform translate-y-32 opacity-0 z-50 pointer-events-none">
+        <div class="flex items-start gap-3">
+            <div id="toast-icon" class="p-2 rounded-lg text-lg bg-cyan-500/20 text-cyan-400">
+                <i class="fa-solid fa-circle-info"></i>
+            </div>
+            <div class="flex-1">
+                <h4 id="toast-title" class="font-bold text-sm text-white">피드백</h4>
+                <p id="toast-message" class="text-xs text-slate-300 mt-1 leading-relaxed">내용...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Game & Logic -->
+    <script>
+        // --- QUIZ DATA BANK (Updated with PDF Textbook Terms) ---
+        const quizData = [
+            {
+                id: 1,
+                category: "에너지 전환 소기관",
+                question: "엽록체의 내부에 존재하는 '타이라코이드 막'의 주요 구조적·기능적 특징으로 올바른 것은?",
+                targetName: "엽록체 (타이라코이드막)",
+                options: [
+                    "엽록체 (타이라코이드막)",
+                    "엽록체 (스트로마)",
+                    "마이토콘드리아 (내막)",
+                    "마이토콘드리아 (바탕질)"
+                ],
+                correctIndex: 0,
+                explanation: "정답! 엽록체의 타이라코이드 막에는 광합성색소와 광계가 있어 빛에너지를 흡수하는 '명반응'이 일어납니다.",
+                wrongFeedback: "오답! 타이라코이드 막은 광합성색소가 모여 명반응(ATP, NADPH 생성)이 진행되는 곳입니다."
+            },
+            {
+                id: 2,
+                category: "에너지 전환 소기관",
+                question: "마이토콘드리아에서 내막이 안쪽으로 꺾여 들어간 주름 구조로, 전자전달계와 ATP 합성효소가 존재하는 곳은?",
+                targetName: "마이토콘드리아 (크리스타)",
+                options: [
+                    "마이토콘드리아 (크리스타)",
+                    "마이토콘드리아 (바탕질)",
+                    "엽록체 (스트로마)",
+                    "골지체"
+                ],
+                correctIndex: 0,
+                explanation: "정답! 마이토콘드리아의 크리스타(내막 주름)는 표면적을 넓혀 산화적 인산화를 통해 다량의 ATP를 효율적으로 생성합니다.",
+                wrongFeedback: "오답! 내막이 안쪽으로 접힌 주름 구조는 '크리스타'이며, 세포호흡의 산화적 인산화가 진행됩니다."
+            },
+            {
+                id: 3,
+                category: "소기관 유기적 협력",
+                question: "핵의 유전정보(mRNA)를 바탕으로 세포 내에서 단백질을 직접 합성하는 막이 없는 세포소기관은?",
+                targetName: "라이보솜 (Ribosome)",
+                options: [
+                    "라이보솜 (Ribosome)",
+                    "라이소솜 (Lysosome)",
+                    "골지체 (Golgi)",
+                    "중심체"
+                ],
+                correctIndex: 0,
+                explanation: "정답! 라이보솜은 rRNA와 단백질로 구성되어 있으며 mRNA 유전정보를 번역하여 단백질을 합성합니다.",
+                wrongFeedback: "오답! 라이소솜은 가수분해효소를 가진 소화 기관이며, 단백질 합성은 '라이보솜'이 담당합니다."
+            },
+            {
+                id: 4,
+                category: "단백질 분비 수송 경로",
+                question: "라이보솜에서 합성된 단백질을 거친면소포체 수송 소낭으로부터 전달받아 가공, 저장 및 분비하는 기관은?",
+                targetName: "골지체 (Golgi Apparatus)",
+                options: [
+                    "골지체 (Golgi Apparatus)",
+                    "거친면소포체",
+                    "매끈면소포체",
+                    "라이소솜"
+                ],
+                correctIndex: 0,
+                explanation: "정답! 골지체는 소포체에서 온 운반 소낭의 단백질을 가공하여 세포 밖으로 분비하거나 라이소솜을 형성합니다.",
+                wrongFeedback: "오답! 단백질의 가공, 수송 및 최종 분비 담당은 시스터나가 쌓인 구조인 '골지체'입니다."
+            },
+            {
+                id: 5,
+                category: "에너지 전환 소기관",
+                question: "엽록체의 '스트로마(Stroma)'에서 일어나는 주요 화학적 반응과 역할은?",
+                targetName: "스트로마 (포도당 합성/암반응)",
+                options: [
+                    "스트로마 (포도당 합성/암반응)",
+                    "타이라코이드 (명반응)",
+                    "마이토콘드리아 바탕질 (TCA회로)",
+                    "핵 (전사)"
+                ],
+                correctIndex: 0,
+                explanation: "정답! 엽록체 스트로마는 내막 안쪽 공간으로, 포도당 합성에 관여하는 효소가 존재하여 암반응이 일어납니다.",
+                wrongFeedback: "오답! 스트로마는 효소들이 가득한 내막 안쪽 공간으로, CO₂를 이용해 포도당을 합성합니다."
+            },
+            {
+                id: 6,
+                category: "물질 소화 및 세포 방어",
+                question: "다양한 가수분해효소를 함유하여 세포 내로 들어온 이물질이나 손상된 세포소기관을 분해하는 기관은?",
+                targetName: "라이소솜 (Lysosome)",
+                options: [
+                    "라이소솜 (Lysosome)",
+                    "라이보솜 (Ribosome)",
+                    "매끈면소포체",
+                    "액포"
+                ],
+                correctIndex: 0,
+                explanation: "정답! 라이소솜은 골지체에서 형성된 단일막 소낭으로, 가수분해효소를 이용하여 세포내소화를 담당합니다.",
+                wrongFeedback: "오답! 라이보솜은 단백질 합성 기관이며, 가수분해효소를 이용한 세포내소화는 '라이소솜'이 수행합니다."
+            },
+            {
+                id: 7,
+                category: "에너지 전환 소기관",
+                question: "마이토콘드리아의 내막 안쪽 공간인 '바탕질'에서 진행되는 세포호흡 관련 주요 특징은?",
+                targetName: "마이토콘드리아 (바탕질)",
+                options: [
+                    "마이토콘드리아 (바탕질)",
+                    "크리스타 (전자전달계)",
+                    "엽록체 스트로마 (캘빈회로)",
+                    "세포질 (해당작용)"
+                ],
+                correctIndex: 0,
+                explanation: "정답! 마이토콘드리아 바탕질에는 세포호흡 관여 효소, 자체 DNA, 라이보솜이 존재합니다.",
+                wrongFeedback: "오답! 마이토콘드리아 내막 안쪽 공간은 '바탕질'이며, 세포호흡 관련 효소가 포함되어 있습니다."
+            },
+            {
+                id: 8,
+                category: "세포 경계 및 물질 출입",
+                question: "인지질과 단백질로 구성되어 있으며, 세포 바깥 환경과의 물질 출입을 조절하는 세포소기관은?",
+                targetName: "세포막 (Cell Membrane)",
+                options: [
+                    "세포막 (Cell Membrane)",
+                    "세포벽",
+                    "핵막",
+                    "소포체막"
+                ],
+                correctIndex: 0,
+                explanation: "정답! 세포막은 세포를 둘러싼 막으로, 안팎으로의 물질 출입을 정밀하게 조절합니다.",
+                wrongFeedback: "오답! 식물 세포 바깥의 세포벽과 달리, 모든 세포의 물질 출입 조절 경계막은 '세포막'입니다."
+            }
+        ];
+
+        // --- GAME STATE ENGINE ---
+        let canvas, ctx;
+        let isGameRunning = false;
+        let currentQuestionIdx = 0;
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let hp = 3;
+        let userAnswers = [];
+
+        // Game Entities
+        let player = { x: 0, y: 0, width: 44, height: 44, speed: 7, isMovingLeft: false, isMovingRight: false };
+        let bullets = [];
+        let meteorites = [];
+        let particles = [];
+        let stars = [];
+
+        // Input Tracking
+        const keys = {};
+
+        // DOM Elements Initialization
+        window.onload = function() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Keyboard Listeners
+            window.addEventListener('keydown', (e) => {
+                keys[e.code] = true;
+                if (e.code === 'Space' && isGameRunning) {
+                    fireBullet();
+                    e.preventDefault();
+                }
+            });
+            window.addEventListener('keyup', (e) => {
+                keys[e.code] = false;
+            });
+
+            // Touch / Mouse Drag Listeners on Canvas
+            let isDragging = false;
+            canvas.addEventListener('pointerdown', (e) => {
+                if (!isGameRunning) return;
+                isDragging = true;
+                movePlayerToPointer(e);
+                fireBullet();
+            });
+            canvas.addEventListener('pointermove', (e) => {
+                if (isGameRunning && isDragging) {
+                    movePlayerToPointer(e);
+                }
+            });
+            canvas.addEventListener('pointerup', () => isDragging = false);
+
+            // On-screen Buttons for Mobile
+            document.getElementById('btn-left').addEventListener('touchstart', (e) => { e.preventDefault(); player.isMovingLeft = true; });
+            document.getElementById('btn-left').addEventListener('touchend', (e) => { e.preventDefault(); player.isMovingLeft = false; });
+            document.getElementById('btn-right').addEventListener('touchstart', (e) => { e.preventDefault(); player.isMovingRight = true; });
+            document.getElementById('btn-right').addEventListener('touchend', (e) => { e.preventDefault(); player.isMovingRight = false; });
+            document.getElementById('btn-fire').addEventListener('click', () => { if (isGameRunning) fireBullet(); });
+
+            // Initialize Background Starfield
+            initStars();
+
+            // Render First Frame
+            requestAnimationFrame(gameLoop);
+        };
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            if (player) {
+                player.y = canvas.height - 60;
+                if (player.x === 0) player.x = canvas.width / 2 - player.width / 2;
+            }
+        }
+
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < 70; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 2 + 0.5,
+                    speed: Math.random() * 0.8 + 0.2,
+                    alpha: Math.random()
+                });
+            }
+        }
+
+        function switchTab(tabName) {
+            ['game', 'guide', 'ai'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`tab-btn-${t}`).classList.remove('bg-blue-600', 'text-white', 'shadow-md');
+                document.getElementById(`tab-btn-${t}`).classList.add('text-slate-400');
+            });
+
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-btn-${tabName}`);
+            activeBtn.classList.add('bg-blue-600', 'text-white', 'shadow-md');
+            activeBtn.classList.remove('text-slate-400');
+
+            if (tabName === 'game') {
+                resizeCanvas();
+            }
+        }
+
+        // --- GAME START & RESET ---
+        function startGame() {
+            isGameRunning = true;
+            currentQuestionIdx = 0;
+            score = 0;
+            combo = 0;
+            maxCombo = 0;
+            hp = 3;
+            userAnswers = [];
+
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-over-screen').classList.add('hidden');
+            document.getElementById('game-over-screen').classList.remove('flex');
+
+            player.x = canvas.width / 2 - player.width / 2;
+            player.y = canvas.height - 60;
+
+            updateUI();
+            loadQuestion(currentQuestionIdx);
+        }
+
+        function loadQuestion(idx) {
+            if (idx >= quizData.length) {
+                endGame(true);
+                return;
+            }
+
+            const q = quizData[idx];
+            document.getElementById('quiz-badge').innerText = `Q${idx + 1} / ${quizData.length}`;
+            document.getElementById('quiz-category').innerText = `[${q.category}]`;
+            document.getElementById('question-text').innerText = q.question;
+
+            // Spawn Targets (Meteorites)
+            meteorites = [];
+            bullets = [];
+            
+            // Shuffle Options for Targets
+            const shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
+            const count = shuffledOptions.length;
+            const spacing = canvas.width / (count + 1);
+
+            shuffledOptions.forEach((optText, i) => {
+                meteorites.push({
+                    x: spacing * (i + 1) - 60,
+                    y: -80 - Math.random() * 40,
+                    width: 120,
+                    height: 50,
+                    text: optText,
+                    isCorrect: optText === q.targetName,
+                    speed: 0.6 + Math.random() * 0.3,
+                    color: optText === q.targetName ? '#38bdf8' : '#94a3b8'
+                });
+            });
+        }
+
+        function fireBullet() {
+            bullets.push({
+                x: player.x + player.width / 2 - 3,
+                y: player.y,
+                width: 6,
+                height: 16,
+                speed: 12
+            });
+        }
+
+        function movePlayerToPointer(e) {
+            const rect = canvas.getBoundingClientRect();
+            const pointerX = e.clientX - rect.left;
+            player.x = pointerX - player.width / 2;
+            // Bound checking
+            if (player.x < 0) player.x = 0;
+            if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
+        }
+
+        // --- MAIN GAME LOOP ---
+        function gameLoop() {
+            // Clear Screen
+            ctx.fillStyle = '#090d16';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Background Stars
+            drawStars();
+
+            if (isGameRunning) {
+                updatePlayer();
+                updateBullets();
+                updateMeteorites();
+                updateParticles();
+
+                drawPlayer();
+                drawBullets();
+                drawMeteorites();
+                drawParticles();
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function drawStars() {
+            ctx.fillStyle = '#ffffff';
+            stars.forEach(s => {
+                s.y += s.speed;
+                if (s.y > canvas.height) s.y = 0;
+                ctx.globalAlpha = s.alpha;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1.0;
+        }
+
+        function updatePlayer() {
+            if ((keys['ArrowLeft'] || keys['KeyA'] || player.isMovingLeft) && player.x > 0) {
+                player.x -= player.speed;
+            }
+            if ((keys['ArrowRight'] || keys['KeyD'] || player.isMovingRight) && player.x < canvas.width - player.width) {
+                player.x += player.speed;
+            }
+        }
+
+        function drawPlayer() {
+            ctx.save();
+            ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
+
+            // Thruster Glow
+            ctx.fillStyle = '#06b6d4';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#06b6d4';
+            ctx.beginPath();
+            ctx.arc(0, player.height / 2, 8 + Math.random() * 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ship Body
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.moveTo(0, -player.height / 2);
+            ctx.lineTo(player.width / 2, player.height / 2);
+            ctx.lineTo(0, player.height / 4);
+            ctx.lineTo(-player.width / 2, player.height / 2);
+            ctx.closePath();
+            ctx.fill();
+
+            // Cockpit
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(0, -5, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function updateBullets() {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].y -= bullets[i].speed;
+                if (bullets[i].y < -20) {
+                    bullets.splice(i, 1);
+                }
+            }
+        }
+
+        function drawBullets() {
+            ctx.fillStyle = '#f43f5e';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#f43f5e';
+            bullets.forEach(b => {
+                ctx.fillRect(b.x, b.y, b.width, b.height);
+            });
+            ctx.shadowBlur = 0;
+        }
+
+        function updateMeteorites() {
+            const currentQ = quizData[currentQuestionIdx];
+
+            for (let i = meteorites.length - 1; i >= 0; i--) {
+                let m = meteorites[i];
+                m.y += m.speed;
+
+                if (m.y > canvas.height + 40) {
+                    m.y = -60;
+                }
+
+                // Bullet Collision Check
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    let b = bullets[j];
+                    if (
+                        b.x < m.x + m.width &&
+                        b.x + b.width > m.x &&
+                        b.y < m.y + m.height &&
+                        b.y + b.height > m.y
+                    ) {
+                        createExplosion(m.x + m.width / 2, m.y + m.height / 2, m.isCorrect ? '#38bdf8' : '#f43f5e');
+                        bullets.splice(j, 1);
+
+                        if (m.isCorrect) {
+                            score += 100 + combo * 20;
+                            combo++;
+                            if (combo > maxCombo) maxCombo = combo;
+
+                            userAnswers.push({ question: currentQ.question, correct: true });
+                            showToast("정답입니다! 🎉", currentQ.explanation, "success");
+
+                            currentQuestionIdx++;
+                            updateUI();
+                            loadQuestion(currentQuestionIdx);
+                            return;
+                        } else {
+                            combo = 0;
+                            hp--;
+                            userAnswers.push({ question: currentQ.question, correct: false });
+                            showToast("오답입니다! ⚠️", currentQ.wrongFeedback, "error");
+
+                            updateUI();
+
+                            if (hp <= 0) {
+                                endGame(false);
+                                return;
+                            } else {
+                                m.y = -80;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function drawMeteorites() {
+            meteorites.forEach(m => {
+                ctx.save();
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 2;
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#0284c7';
+
+                ctx.beginPath();
+                ctx.roundRect(m.x, m.y, m.width, m.height, 12);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 12px "Noto Sans KR", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                const words = m.text.split(' ');
+                if (words.length > 1 && m.text.length > 8) {
+                    ctx.fillText(words[0], m.x + m.width / 2, m.y + m.height / 2 - 7);
+                    ctx.fillText(words.slice(1).join(' '), m.x + m.width / 2, m.y + m.height / 2 + 9);
+                } else {
+                    ctx.fillText(m.text, m.x + m.width / 2, m.y + m.height / 2);
+                }
+
+                ctx.restore();
+            });
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 20; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    size: Math.random() * 4 + 2,
+                    color: color,
+                    life: 1.0
+                });
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.04;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1.0;
+        }
+
+        function updateUI() {
+            document.getElementById('score-display').innerText = score;
+            document.getElementById('combo-display').innerText = combo;
+
+            let hearts = '';
+            for (let i = 0; i < 3; i++) {
+                hearts += i < hp ? '❤️' : '🖤';
+            }
+            document.getElementById('hp-display').innerText = hearts;
+        }
+
+        function showToast(title, msg, type = "info") {
+            const toast = document.getElementById('toast-modal');
+            const toastTitle = document.getElementById('toast-title');
+            const toastMsg = document.getElementById('toast-message');
+            const toastIcon = document.getElementById('toast-icon');
+
+            toastTitle.innerText = title;
+            toastMsg.innerText = msg;
+
+            if (type === "success") {
+                toastIcon.className = "p-2 rounded-lg text-lg bg-emerald-500/20 text-emerald-400";
+                toastIcon.innerHTML = `<i class="fa-solid fa-circle-check"></i>`;
+            } else if (type === "error") {
+                toastIcon.className = "p-2 rounded-lg text-lg bg-rose-500/20 text-rose-400";
+                toastIcon.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i>`;
+            }
+
+            toast.classList.remove('translate-y-32', 'opacity-0', 'pointer-events-none');
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-32', 'opacity-0', 'pointer-events-none');
+            }, 3500);
+        }
+
+        // --- GAME OVER & REPORT MODAL ---
+        function endGame(isVictory) {
+            isGameRunning = false;
+
+            const gameOverScreen = document.getElementById('game-over-screen');
+            const resultIcon = document.getElementById('result-icon-container');
+            const resultTitle = document.getElementById('result-title');
+            const resultSubtitle = document.getElementById('result-subtitle');
+
+            gameOverScreen.classList.remove('hidden');
+            gameOverScreen.classList.add('flex');
+
+            document.getElementById('final-score').innerText = `${score}점`;
+            document.getElementById('final-combo').innerText = `${maxCombo}x`;
+
+            const total = userAnswers.length;
+            const correctCount = userAnswers.filter(a => a.correct).length;
+            const accuracy = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+            document.getElementById('final-accuracy').innerText = `${accuracy}% (${correctCount}/${total} 문항 정답)`;
+
+            if (isVictory) {
+                resultIcon.className = "w-16 h-16 mb-3 rounded-full flex items-center justify-center text-3xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-lg shadow-emerald-500/20";
+                resultIcon.innerHTML = `<i class="fa-solid fa-trophy"></i>`;
+                resultTitle.innerText = "미션 완료! 세포 탐험 성공";
+                resultSubtitle.innerText = "축하합니다! 세포소기관의 주요 구조와 기능을 완벽히 학습했습니다.";
+            } else {
+                resultIcon.className = "w-16 h-16 mb-3 rounded-full flex items-center justify-center text-3xl bg-rose-500/20 text-rose-400 border border-rose-500/40 shadow-lg shadow-rose-500/20";
+                resultIcon.innerHTML = `<i class="fa-solid fa-heart-crack"></i>`;
+                resultTitle.innerText = "탐사 실패 (체력 소진)";
+                resultSubtitle.innerText = "세포소기관 개념을 다시 복습하고 재도전해 보세요!";
+            }
+
+            const summaryList = document.getElementById('quiz-summary-list');
+            summaryList.innerHTML = '';
+            quizData.forEach((q, idx) => {
+                const userAns = userAnswers[idx];
+                const item = document.createElement('div');
+                item.className = `p-3 rounded-lg border ${userAns && userAns.correct ? 'bg-slate-900 border-slate-800' : 'bg-rose-950/20 border-rose-900/40'}`;
+                item.innerHTML = `
+                    <div class="flex items-center justify-between font-bold mb-1">
+                        <span class="text-slate-300">Q${idx + 1}. ${q.targetName}</span>
+                        <span class="${userAns && userAns.correct ? 'text-emerald-400' : 'text-rose-400'}">
+                            ${userAns && userAns.correct ? '✓ 정답' : '✗ 오답'}
+                        </span>
+                    </div>
+                    <p class="text-slate-400 text-[11px]">${q.explanation}</p>
+                `;
+                summaryList.appendChild(item);
+            });
+        }
+    </script>
+</body>
+</html>
